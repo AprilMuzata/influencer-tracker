@@ -1,0 +1,69 @@
+name: Hourly Data Collection & Deploy
+
+on:
+  schedule:
+    # 每小时整点运行 (UTC 时间，北京时间需要 +8)
+    - cron: '0 * * * *'
+  workflow_dispatch:  # 允许手动触发
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/collect.yml'
+      - 'server/collector.py'
+      - 'build_tracker.py'
+
+# 确保同一时间只有一个 workflow 在运行
+concurrency:
+  group: collector
+  cancel-in-progress: false
+
+jobs:
+  collect-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # 需要写入权限来提交数据
+      pages: write         # GitHub Pages 部署权限
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run collector
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: python server/collector.py
+
+      - name: Build tracker HTML
+        run: python build_tracker.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add server/tracker.db web/index.html web/data.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📊 Auto: hourly data update [$(date -u +'%Y-%m-%d %H:%M UTC')]"
+            git push
+          fi
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact for Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+env/
+
+# Node
+node_modules/
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# WorkBuddy
+.workbuddy/
+
+# But KEEP the database and built files
+# (they need to be in the repo for GitHub Actions to work)
+
+# Temp files
+*.tmp
+*_patch_*.py

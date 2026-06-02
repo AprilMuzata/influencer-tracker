@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes">
+<meta name="theme-color" content="#4f6ef7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="红人追踪器">
+<title>红人合作视频追踪器</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+/* ===== CSS Variables & Reset ===== */
+:root {
+  --bg: #f5f6fa;
+  --card: #ffffff;
+  --text: #1a1d2e;
+  --text2: #5a6070;
+  --text3: #8b90a8;
+  --border: #e4e7ef;
+  --border2: #f0f2f5;
+  --primary: #4f6ef7;
+  --primary-light: #f0f3ff;
+  --primary-hover: #3d5ce6;
+  --shadow: 0 1px 4px rgba(0,0,0,.06);
+  --yt: #e74c3c; --yt-bg: #fde8e8;
+  --ig: #9b59b6; --ig-bg: #fde8f6;
+  --tk: #16a085; --tk-bg: #e8fdf5;
+  --fb: #2980b9; --fb-bg: #e8eef8;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --nav-height: 60px;
+}
+body.dark {
+  --bg: #0f1117;
+  --card: #1a1d2e;
+  --text: #e4e7ef;
+  --text2: #8b90a8;
+  --text3: #5a6070;
+  --border: #2a2d3e;
+  --border2: #1f2233;
+  --primary-light: #1a2040;
+  --shadow: 0 1px 4px rgba(0,0,0,.3);
+}
+
+/* ===== Add Video Form ===== */
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
+.form-group label .required { color: #e74c3c; margin-left: 2px; }
+.form-input, .form-select {
+  width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 14px; background: var(--card);
+  color: var(--text); outline: none; font-family: inherit;
+  transition: border-color .15s;
+}
+.form-input:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+.form-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
+.form-error { font-size: 12px; color: #dc2626; margin-top: 4px; display: none; }
+.form-error.show { display: block; }
+.btn-danger { background: #dc2626; color: #fff; }
+.btn-danger:hover { background: #b91c1c; }
+.new-video-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 6px; border-radius: 10px; font-size: 10px;
+  background: #fef3c7; color: #92400e; margin-left: 6px;
+}
+body.dark .new-video-badge { background: #422006; color: #fbbf24; }
+
+/* ===== Time Range Selector ===== */
+.time-range-bar {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin-bottom: 16px;
+}
+.time-range-btn {
+  padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px;
+  background: var(--card); color: var(--text2); font-size: 13px;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+  font-family: inherit;
+}
+.time-range-btn:hover { border-color: var(--primary); color: var(--primary); }
+.time-range-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.time-range-custom { display: none; align-items: center; gap: 6px; }
+.time-range-custom.show { display: inline-flex; }
+.time-range-custom input[type="date"] {
+  padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 12px; background: var(--card); color: var(--text);
+  font-family: inherit; width: 130px;
+}
+.time-range-custom input[type="date"]:focus { outline: none; border-color: var(--primary); }
+.time-range-check {
+  padding: 4px 10px; border: none; border-radius: 6px;
+  background: var(--primary); color: #fff; font-size: 12px;
+  cursor: pointer; font-family: inherit;
+}
+.time-range-check:hover { background: var(--primary-hover); }
+.growth-summary {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px; margin-bottom: 16px;
+}
+.growth-summary .stat-card { padding: 14px; }
+.growth-summary .stat-card .delta {
+  font-size: 13px; font-weight: 600; margin-top: 2px;
+}
+.delta-up { color: #16a34a; }
+.delta-down { color: #dc2626; }
+.delta-zero { color: var(--text3); }
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5;-webkit-tap-highlight-color:transparent}
+
+/* ===== Top Navbar (Mobile) ===== */
+.mobile-nav{display:none;position:sticky;top:0;z-index:100;background:var(--card);border-bottom:1px solid var(--border);padding:0 16px;height:var(--nav-height);align-items:center;justify-content:space-between}
+.mobile-nav .brand{font-size:16px;font-weight:700}
+.mobile-nav .menu-btn{background:none;border:none;font-size:24px;color:var(--text);cursor:pointer;padding:8px;line-height:1}
+.mobile-nav .theme-btn{background:none;border:none;font-size:20px;cursor:pointer;padding:8px;line-height:1}
+
+/* ===== Side Drawer (Mobile) ===== */
+.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200}
+.drawer-overlay.open{display:block}
+.drawer{position:fixed;top:0;left:0;bottom:0;width:260px;background:var(--card);z-index:201;transform:translateX(-100%);transition:transform .25s ease;overflow-y:auto}
+.drawer.open{transform:translateX(0)}
+.drawer-header{padding:20px 18px;border-bottom:1px solid var(--border)}
+.drawer-header h2{font-size:16px;font-weight:700}
+.drawer-header p{font-size:11px;color:var(--text3);margin-top:4px}
+.drawer-nav{padding:8px 0}
+.drawer-nav a{display:flex;align-items:center;gap:10px;padding:10px 18px;font-size:14px;color:var(--text2);text-decoration:none;border-left:3px solid transparent;transition:all .15s;cursor:pointer}
+.drawer-nav a:hover,.drawer-nav a.active{color:var(--primary);background:var(--primary-light);border-left-color:var(--primary);font-weight:600}
+
+/* ===== Desktop Sidebar ===== */
+.app-layout{display:flex;min-height:100vh}
+.desktop-sidebar{width:220px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.desktop-sidebar .brand{padding:20px 18px 12px;border-bottom:1px solid var(--border)}
+.desktop-sidebar .brand h2{font-size:16px;font-weight:700}
+.desktop-sidebar .brand p{font-size:11px;color:var(--text3);margin-top:2px}
+.desktop-sidebar nav{padding:10px 0;flex:1}
+.desktop-sidebar nav a{display:flex;align-items:center;gap:10px;padding:9px 18px;font-size:13.5px;color:var(--text2);text-decoration:none;border-left:3px solid transparent;transition:all .15s;cursor:pointer}
+.desktop-sidebar nav a:hover,.desktop-sidebar nav a.active{color:var(--primary);background:var(--primary-light);border-left-color:var(--primary);font-weight:600}
+.desktop-sidebar .sidebar-footer{padding:14px 18px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);display:flex;justify-content:space-between;align-items:center}
+.desktop-sidebar .sidebar-footer button{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:14px;color:var(--text2)}
+
+.main-content{flex:1;overflow:auto;min-width:0}
+
+/* ===== Pages ===== */
+.page{display:none;padding:24px}
+.page.active{display:block}
+.page-header{margin-bottom:20px}
+.page-header h1{font-size:22px;font-weight:700}
+.page-header p{color:var(--text3);font-size:13px;margin-top:4px}
+
+/* ===== Stats Grid ===== */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.stat-card .icon{font-size:20px;margin-bottom:6px}
+.stat-card .label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.stat-card .value{font-size:24px;font-weight:700;margin-top:4px;color:var(--text)}
+.stat-card .sub{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* ===== Charts ===== */
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:20px}
+.chart-wrap{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.chart-wrap h3{font-size:14px;font-weight:600;color:var(--text2);margin-bottom:12px}
+.chart-inner{height:240px;position:relative}
+
+/* ===== Cards ===== */
+.card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:16px}
+.card h3{font-size:14px;font-weight:600;color:var(--text2);margin-bottom:12px}
+
+/* ===== Filters ===== */
+.filter-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
+.filter-bar select,.filter-bar input{border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;font-size:13px;background:var(--card);color:var(--text);outline:none}
+.filter-bar select:focus,.filter-bar input:focus{border-color:var(--primary)}
+.filter-bar input[type=text]{width:140px}
+
+/* ===== Buttons ===== */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-hover)}
+.btn-outline{background:var(--card);color:var(--primary);border:1px solid var(--primary)}
+.btn-outline:hover{background:var(--primary-light)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2)}
+.btn-ghost:hover{background:var(--bg)}
+
+/* ===== Badges ===== */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-yt{background:var(--yt-bg);color:var(--yt)}
+.badge-ig{background:var(--ig-bg);color:var(--ig)}
+.badge-tk{background:var(--tk-bg);color:var(--tk)}
+.badge-fb{background:var(--fb-bg);color:var(--fb)}
+
+/* ===== Table ===== */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.table-wrap table{width:100%;border-collapse:collapse;font-size:13px;min-width:700px}
+.table-wrap th{text-align:left;padding:10px 12px;color:var(--text3);font-weight:600;font-size:12px;border-bottom:2px solid var(--border2);white-space:nowrap;position:sticky;top:0;background:var(--card);z-index:1}
+.table-wrap th.sortable{cursor:pointer;user-select:none}
+.table-wrap th.sortable:hover{color:var(--primary)}
+.table-wrap td{padding:10px 12px;border-bottom:1px solid var(--border2);vertical-align:middle}
+.table-wrap tr:hover td{background:var(--primary-light)}
+.num{font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+.video-cell{display:flex;align-items:flex-start;gap:10px;max-width:320px}
+.video-thumb{width:72px;height:50px;border-radius:6px;object-fit:cover;background:var(--border2);flex-shrink:0}
+.video-info{min-width:0}
+.video-info .title{font-weight:500;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}
+.video-info a{color:var(--primary);text-decoration:none}
+.video-info a:hover{text-decoration:underline}
+.video-info .meta{font-size:11px;color:var(--text3);margin-top:3px}
+
+/* ===== Growth Cards ===== */
+.growth-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.growth-card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.growth-card .g-title{font-size:13px;font-weight:600;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.growth-card .g-meta{font-size:11px;color:var(--text3);margin-bottom:10px}
+.growth-card .g-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;font-size:12px}
+.growth-card .g-stats>div{background:var(--border2);border-radius:var(--radius-sm);padding:10px 6px}
+.growth-card .g-stats .g-val{font-weight:700;font-size:15px;margin-top:2px}
+.growth-card .g-stats .g-val.up{color:#16a34a}
+.growth-card .g-stats .g-val.down{color:#dc2626}
+.growth-card.no-data{opacity:0.75;border-left:3px solid var(--border)}
+.growth-card .g-hint{font-size:11px;color:var(--text3);margin-top:8px}
+
+/* ===== Modal ===== */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border-radius:16px;width:94%;max-width:800px;max-height:90vh;overflow-y:auto;padding:24px;position:relative}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.modal-header h3{font-size:18px;font-weight:700}
+.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--text3);line-height:1}
+.history-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px}
+
+/* ===== Updates Banner ===== */
+.update-banner{background:var(--primary-light);border:1px solid var(--primary);border-radius:var(--radius-sm);padding:10px 16px;margin-bottom:16px;font-size:13px;color:var(--primary);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.update-banner a{color:var(--primary);font-weight:600}
+
+/* ===== Responsive ===== */
+@media(max-width:768px){
+  .desktop-sidebar{display:none}
+  .mobile-nav{display:flex}
+  .page{padding:16px}
+  .page-header h1{font-size:18px}
+  .stat-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .stat-card{padding:12px}
+  .stat-card .value{font-size:20px}
+  .chart-grid{grid-template-columns:1fr}
+  .chart-inner{height:200px}
+  .video-thumb{width:56px;height:38px}
+  .video-cell{max-width:220px}
+  .growth-grid{grid-template-columns:1fr}
+  .history-stats{grid-template-columns:repeat(2,1fr)}
+}
+@media(min-width:769px){
+  .mobile-nav{display:none}
+  .drawer-overlay,.drawer{display:none}
+}
+@media(min-width:1200px){
+  .page{padding:28px 40px}
+}
+</style>
+</head>
+<body>
+
+<!-- Mobile Navigation -->
+<nav class="mobile-nav">
+  <button class="menu-btn" onclick="toggleDrawer()" aria-label="菜单">☰</button>
+  <span class="brand">📊 红人追踪器</span>
+  <button class="theme-btn" onclick="toggleTheme()" aria-label="切换主题" id="theme-btn">🌙</button>
+</nav>
+
+<!-- Drawer Overlay -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="toggleDrawer()"></div>
+
+<!-- Mobile Drawer -->
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <h2>📊 红人追踪器</h2>
+    <p>跨平台数据追踪</p>
+  </div>
+  <div class="drawer-nav">
+    <a onclick="showPage('dashboard')" class="active" data-nav="dashboard">🏠 数据总览</a>
+    <a onclick="showPage('videos')" data-nav="videos">🎬 视频列表</a>
+    <a onclick="showPage('analytics')" data-nav="analytics">📈 数据分析</a>
+    <a onclick="showPage('growth')" data-nav="growth">🕒 增长记录</a>
+    <a onclick="openAddVideoModal()" style="color:var(--primary);font-weight:600">➕ 添加视频</a>
+  </div>
+</div>
+
+<!-- App Layout -->
+<div class="app-layout">
+
+<!-- Desktop Sidebar -->
+<aside class="desktop-sidebar">
+  <div class="brand">
+    <h2>📊 红人追踪器</h2>
+    <p id="nav-today"></p>
+  </div>
+  <nav>
+    <a onclick="showPage('dashboard')" class="active" data-nav="dashboard">🏠 数据总览</a>
+    <a onclick="showPage('videos')" data-nav="videos">🎬 视频列表</a>
+    <a onclick="showPage('analytics')" data-nav="analytics">📈 数据分析</a>
+    <a onclick="showPage('growth')" data-nav="growth">🕒 增长记录</a>
+    <a onclick="openAddVideoModal()" style="color:var(--primary);font-weight:600">➕ 添加视频</a>
+  </nav>
+  <div class="sidebar-footer">
+    <span id="update-time"></span>
+    <button onclick="toggleTheme()" title="切换主题">🌙</button>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<main class="main-content">
+
+<!-- ===== Dashboard ===== -->
+<div class="page active" id="page-dashboard">
+  <div class="page-header">
+    <h1>数据总览</h1>
+    <p>跨平台网红合作视频追踪 · 数据快照于 <span id="dash-snapshot"></span></p>
+  </div>
+
+  <div class="update-banner">
+    <span>🔄 数据自动更新中 · 上次采集: <span id="dash-last-fetch"></span></span>
+    <a href="/tracker.html" target="_blank">打开本地实时版</a>
+  </div>
+
+  <div class="stat-grid" id="dash-stats"></div>
+
+  <div class="chart-grid">
+    <div class="chart-wrap">
+      <h3>📈 播放量趋势</h3>
+      <div class="chart-inner"><canvas id="chart-trend"></canvas></div>
+    </div>
+    <div class="chart-wrap">
+      <h3>🍩 平台分布</h3>
+      <div class="chart-inner"><canvas id="chart-platform"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-wrap">
+      <h3>📊 互动数据</h3>
+      <div class="chart-inner"><canvas id="chart-engage"></canvas></div>
+    </div>
+    <div class="chart-wrap">
+      <h3>🏆 Top 10 视频</h3>
+      <div class="chart-inner"><canvas id="chart-top10"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Video List ===== -->
+<div class="page" id="page-videos">
+  <div class="page-header">
+    <h1>视频列表</h1>
+    <p>全部合作视频 · <span id="video-count-text"></span> 条</p>
+  </div>
+
+  <div class="filter-bar">
+    <select id="vf-platform" onchange="renderVideos()">
+      <option value="all">全部平台</option>
+      <option value="youtube">YouTube</option>
+      <option value="instagram">Instagram</option>
+      <option value="tiktok">TikTok</option>
+      <option value="facebook">Facebook</option>
+    </select>
+    <input type="text" id="vf-search" placeholder="搜索标题/博主..." oninput="renderVideos()">
+    <select id="vf-sort" onchange="renderVideos()">
+      <option value="views_desc">播放量 ↓</option>
+      <option value="views_asc">播放量 ↑</option>
+      <option value="date_desc">日期 ↓</option>
+      <option value="date_asc">日期 ↑</option>
+      <option value="likes_desc">点赞 ↓</option>
+    </select>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>视频</th><th>平台</th><th>博主</th>
+          <th class="sortable" onclick="sortVideos('views')">播放量</th>
+          <th class="sortable" onclick="sortVideos('likes')">点赞</th>
+          <th class="sortable" onclick="sortVideos('comments')">评论</th>
+          <th>转发</th><th>收藏</th>
+          <th style="width:60px">趋势</th>
+        </tr></thead>
+        <tbody id="video-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Analytics ===== -->
+<div class="page" id="page-analytics">
+  <div class="page-header">
+    <h1>数据分析</h1>
+    <p>按平台维度深入分析各项指标</p>
+  </div>
+
+  <div class="filter-bar">
+    <select id="an-platform" onchange="renderAnalytics()">
+      <option value="all">全部平台</option>
+      <option value="youtube">YouTube</option>
+      <option value="instagram">Instagram</option>
+      <option value="tiktok">TikTok</option>
+      <option value="facebook">Facebook</option>
+    </select>
+  </div>
+
+  <div class="stat-grid" id="an-stats"></div>
+
+  <div class="chart-grid">
+    <div class="chart-wrap">
+      <h3>平台播放量对比</h3>
+      <div class="chart-inner"><canvas id="an-chart-platform"></canvas></div>
+    </div>
+    <div class="chart-wrap">
+      <h3>互动率对比 (%)</h3>
+      <div class="chart-inner"><canvas id="an-chart-engage"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🏆 博主排行榜</h3>
+    <div id="an-rank"></div>
+  </div>
+</div>
+
+<!-- ===== Growth ===== -->
+<div class="page" id="page-growth">
+  <div class="page-header">
+    <h1>增长记录</h1>
+    <p>视频数据的历史变化 · 选择时间范围查看增长</p>
+  </div>
+
+  <div class="time-range-bar" id="gr-time-range">
+    <button class="time-range-btn active" onclick="setGrowthTimeRange('all')">全部</button>
+    <button class="time-range-btn" onclick="setGrowthTimeRange(7)">最近 7 天</button>
+    <button class="time-range-btn" onclick="setGrowthTimeRange(30)">最近 30 天</button>
+    <button class="time-range-btn" onclick="setGrowthTimeRange(90)">最近 90 天</button>
+    <button class="time-range-btn" id="gr-custom-btn" onclick="toggleCustomRange()">自定义 ⚙</button>
+    <span class="time-range-custom" id="gr-custom-inputs">
+      <input type="date" id="gr-start" onchange="applyCustomRange()">
+      <span style="color:var(--text3);font-size:12px">至</span>
+      <input type="date" id="gr-end" onchange="applyCustomRange()">
+      <button class="time-range-check" onclick="applyCustomRange()">确定</button>
+    </span>
+  </div>
+
+  <div class="growth-summary" id="gr-summary"></div>
+
+  <div class="chart-wrap" style="margin-bottom:16px">
+    <h3>📈 总播放量变化</h3>
+    <div class="chart-inner"><canvas id="gr-chart"></canvas></div>
+  </div>
+
+  <div class="growth-grid" id="growth-cards"></div>
+</div>
+
+</main>
+</div>
+
+<!-- Add Video Modal -->
+<div class="modal-overlay" id="add-video-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>➕ 添加新视频</h3>
+      <button class="modal-close" onclick="closeModal('add-video-modal')">&times;</button>
+    </div>
+    <form onsubmit="submitNewVideo(event)" style="margin-top:8px">
+      <div class="form-group">
+        <label>平台 <span class="required">*</span></label>
+        <select class="form-select" id="av-platform" required>
+          <option value="">请选择平台</option>
+          <option value="youtube">YouTube</option>
+          <option value="instagram">Instagram</option>
+          <option value="tiktok">TikTok</option>
+          <option value="facebook">Facebook</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>视频链接 <span class="required">*</span></label>
+        <input class="form-input" type="url" id="av-url" placeholder="https://..." required>
+        <div class="form-error" id="av-url-error">请输入有效的视频链接（以 http/https 开头）</div>
+      </div>
+      <div class="form-group">
+        <label>视频标题</label>
+        <input class="form-input" type="text" id="av-title" placeholder="可选，不填则使用链接">
+      </div>
+      <div class="form-group">
+        <label>博主 / 频道名</label>
+        <input class="form-input" type="text" id="av-channel" placeholder="如：@CreatorName">
+      </div>
+      <div class="form-group">
+        <label>发布日期</label>
+        <input class="form-input" type="date" id="av-date">
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <input class="form-input" type="text" id="av-notes" placeholder="可选备注信息">
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+        <button type="button" class="btn btn-outline" onclick="closeModal('add-video-modal')">取消</button>
+        <button type="submit" class="btn btn-primary">✅ 添加视频</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Manage Local Videos Modal -->
+<div class="modal-overlay" id="manage-videos-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>📋 管理本地视频</h3>
+      <button class="modal-close" onclick="closeModal('manage-videos-modal')">&times;</button>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px">这些视频保存在浏览器本地。导出 JSON 文件后可导入到数据库。</p>
+    <div id="local-video-list"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid var(--border2)">
+      <button class="btn btn-outline btn-sm" onclick="exportLocalVideos()">📥 导出 JSON</button>
+      <button class="btn btn-primary btn-sm" onclick="openAddVideoModal();closeModal('manage-videos-modal')">➕ 新增视频</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('manage-videos-modal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal-overlay" id="hist-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="hist-title">历史数据</h3>
+      <button class="modal-close" onclick="closeModal('hist-modal')">×</button>
+    </div>
+    <div class="history-stats" id="hist-stats"></div>
+    <div class="chart-inner" style="height:260px"><canvas id="hist-chart"></canvas></div>
+    <div style="max-height:300px;overflow-y:auto;margin-top:16px">
+      <table id="hist-table" style="width:100%;font-size:12px;border-collapse:collapse">
+        <thead><tr><th style="padding:8px;color:var(--text3);border-bottom:2px solid var(--border2);text-align:left">时间</th><th style="padding:8px;color:var(--text3);border-bottom:2px solid var(--border2);text-align:right">播放</th><th style="padding:8px;color:var(--text3);border-bottom:2px solid var(--border2);text-align:right">点赞</th><th style="padding:8px;color:var(--text3);border-bottom:2px solid var(--border2);text-align:right">评论</th><th style="padding:8px;color:var(--text3);border-bottom:2px solid var(--border2);text-align:right">转发</th><th style="padding:8px;color:var(--text3);border-bottom:2px solid var(--border2);text-align:right">收藏</th></tr></thead>
+        <tbody id="hist-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== EMBEDDED DATA =====
+const DATA = __DATA_PLACEHOLDER__;
+
+// ===== Helpers =====
+const PLAT_COLORS = {youtube:'#e74c3c',instagram:'#9b59b6',tiktok:'#16a085',facebook:'#2980b9',other:'#95a5a6'};
+const PLAT_NAMES = {youtube:'YouTube',instagram:'Instagram',tiktok:'TikTok',facebook:'Facebook'};
+function fmt(n){if(!n&&n!==0)return'0';return Number(n).toLocaleString('en-US')}
+function badge(p){return `<span class="badge badge-${p==='tiktok'?'tk':p.slice(0,2)}">${PLAT_NAMES[p]||p}</span>`}
+const today = new Date().toISOString().slice(0,10);
+
+// ===== Local Videos (localStorage) =====
+const LS_KEY = 'tracker-local-videos';
+
+function loadLocalVideos() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+function saveLocalVideos(videos) {
+  localStorage.setItem(LS_KEY, JSON.stringify(videos));
+}
+
+function addLocalVideo(video) {
+  const videos = loadLocalVideos();
+  video.id = 'local_' + Date.now();
+  video.added_at = new Date().toISOString();
+  video.isLocal = true;
+  videos.push(video);
+  saveLocalVideos(videos);
+  return video;
+}
+
+function removeLocalVideo(id) {
+  let videos = loadLocalVideos();
+  videos = videos.filter(v => v.id !== id);
+  saveLocalVideos(videos);
+}
+
+function getAllVideos() {
+  // Merge DATA.videos with localStorage videos
+  const localVids = loadLocalVideos();
+  // Deduplicate: if a local video URL matches a DB video, skip the local one
+  const dbUrls = new Set(DATA.videos.map(v => v.url));
+  const uniqueLocal = localVids.filter(v => !dbUrls.has(v.url));
+  return [...DATA.videos, ...uniqueLocal];
+}
+
+// ===== Add Video Modal =====
+function openAddVideoModal() {
+  document.getElementById('av-platform').value = '';
+  document.getElementById('av-url').value = '';
+  document.getElementById('av-title').value = '';
+  document.getElementById('av-channel').value = '';
+  document.getElementById('av-date').value = today;
+  document.getElementById('av-notes').value = '';
+  document.getElementById('av-url-error').classList.remove('show');
+  openModal('add-video-modal');
+  document.getElementById('av-platform').focus();
+}
+
+function submitNewVideo(e) {
+  e.preventDefault();
+  const platform = document.getElementById('av-platform').value;
+  const url = document.getElementById('av-url').value.trim();
+  const title = document.getElementById('av-title').value.trim();
+  const channel = document.getElementById('av-channel').value.trim();
+  const date = document.getElementById('av-date').value || today;
+  const notes = document.getElementById('av-notes').value.trim();
+
+  // Validate URL
+  if (!url || !url.startsWith('http')) {
+    document.getElementById('av-url-error').classList.add('show');
+    return;
+  }
+  document.getElementById('av-url-error').classList.remove('show');
+
+  // Check for duplicate URL
+  const allVids = getAllVideos();
+  if (allVids.some(v => v.url === url)) {
+    alert('该视频链接已存在，请勿重复添加！');
+    return;
+  }
+
+  const video = {
+    platform: platform,
+    url: url,
+    title: title || url.slice(0, 60),
+    channel: channel,
+    published_at: date,
+    notes: notes,
+    views: 0, likes: 0, comments: 0, shares: 0, saves: 0,
+    thumbnail: '',
+    last_fetched: ''
+  };
+
+  addLocalVideo(video);
+  closeModal('add-video-modal');
+
+  // Refresh current page
+  showPage(currentPage);
+
+  // Also update manage list if open
+  if (document.getElementById('manage-videos-modal').classList.contains('open')) {
+    renderLocalVideoList();
+  }
+}
+
+function renderLocalVideoList() {
+  const videos = loadLocalVideos();
+  const container = document.getElementById('local-video-list');
+  if (videos.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3)">暂无本地视频</div>';
+    return;
+  }
+  container.innerHTML = videos.map(v => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border2);gap:10px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${badge(v.platform)} ${v.title}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${v.channel} · ${v.published_at} · 添加于 ${(v.added_at||'').slice(0,10)}</div>
+        ${v.notes ? `<div style="font-size:11px;color:var(--text3)">备注: ${v.notes}</div>` : ''}
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteLocalVideo('${v.id}')" title="删除">🗑</button>
+    </div>
+  `).join('');
+}
+
+function deleteLocalVideo(id) {
+  if (!confirm('确定删除这条本地视频吗？')) return;
+  removeLocalVideo(id);
+  renderLocalVideoList();
+  showPage(currentPage);
+}
+
+function exportLocalVideos() {
+  const videos = loadLocalVideos();
+  if (videos.length === 0) {
+    alert('暂无本地视频可导出');
+    return;
+  }
+  // Export as JSON for easy import into database
+  const blob = new Blob([JSON.stringify(videos, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'new_videos_' + today + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function openManageVideos() {
+  renderLocalVideoList();
+  openModal('manage-videos-modal');
+}
+
+let chartCache = {};
+function destroyCharts(){Object.values(chartCache).forEach(c=>{try{c.destroy()}catch(e){}});chartCache={}}
+
+// ===== Theme =====
+function toggleTheme(){
+  const b = document.body;
+  b.classList.toggle('dark');
+  const isDark = b.classList.contains('dark');
+  document.querySelectorAll('.theme-btn').forEach(b=>b.textContent=isDark?'☀️':'🌙');
+  localStorage.setItem('tracker-theme',isDark?'dark':'light');
+  // Re-render charts with new theme
+  showPage(currentPage);
+}
+function initTheme(){
+  if(localStorage.getItem('tracker-theme')==='dark' || (!localStorage.getItem('tracker-theme') && window.matchMedia('(prefers-color-scheme:dark)').matches)){
+    document.body.classList.add('dark');
+    document.querySelectorAll('.theme-btn').forEach(b=>b.textContent='☀️');
+  }
+}
+
+// ===== Navigation =====
+let currentPage = 'dashboard';
+function showPage(id){
+  currentPage = id;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const pg = document.getElementById('page-'+id);
+  if(pg) pg.classList.add('active');
+
+  document.querySelectorAll('[data-nav]').forEach(a=>a.classList.remove('active'));
+  document.querySelectorAll(`[data-nav="${id}"]`).forEach(a=>a.classList.add('active'));
+
+  // Close drawer on mobile
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+
+  // Load page
+  destroyCharts();
+  setTimeout(()=>{
+  if(id==='dashboard') renderDashboard();
+  if(id==='videos') renderVideos();
+  if(id==='analytics') renderAnalytics();
+  if(id==='growth') renderGrowth();
+  },50);
+}
+
+function toggleDrawer(){
+  const d=document.getElementById('drawer');
+  const o=document.getElementById('drawer-overlay');
+  const open=!d.classList.contains('open');
+  d.classList.toggle('open',open);
+  o.classList.toggle('open',open);
+}
+
+// ===== Dashboard =====
+function renderDashboard(){
+  const v = getAllVideos();
+  const h = DATA.history;
+  const totals = v.reduce((a,x)=>({views:a.views+(x.views||0),likes:a.likes+(x.likes||0),comments:a.comments+(x.comments||0),shares:a.shares+(x.shares||0),saves:a.saves+(x.saves||0)}),{views:0,likes:0,comments:0,shares:0,saves:0});
+  const eng = totals.views>0?((totals.likes+totals.comments)/totals.views*100).toFixed(2):'0.00';
+
+  document.getElementById('dash-snapshot').textContent = DATA.generated_at.slice(0,16);
+  const lf = v.length>0 ? v.reduce((max,x)=>x.last_fetched>max?x.last_fetched:max,'') : '';
+  document.getElementById('dash-last-fetch').textContent = lf ? lf.slice(0,16) : '—';
+
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card"><div class="icon">👁️</div><div class="label">总播放量</div><div class="value">${fmt(totals.views)}</div><div class="sub">${v.length} 条视频</div></div>
+    <div class="stat-card"><div class="icon">❤️</div><div class="label">总点赞</div><div class="value">${fmt(totals.likes)}</div></div>
+    <div class="stat-card"><div class="icon">💬</div><div class="label">总评论</div><div class="value">${fmt(totals.comments)}</div></div>
+    <div class="stat-card"><div class="icon">🔁</div><div class="label">总转发</div><div class="value">${fmt(totals.shares)}</div></div>
+    <div class="stat-card"><div class="icon">⭐</div><div class="label">总收藏</div><div class="value">${fmt(totals.saves)}</div></div>
+    <div class="stat-card"><div class="icon">📊</div><div class="label">互动率</div><div class="value">${eng}%</div></div>
+  `;
+
+  // Trend chart
+  if(h.length>0){
+    const labels=h.map(r=>r.day.slice(5));
+    const views=h.map(r=>r.views||0);
+    const ctx=document.getElementById('chart-trend').getContext('2d');
+    chartCache.trend=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'播放量',data:views,borderColor:'#4f6ef7',backgroundColor:'rgba(79,110,247,.1)',fill:true,tension:.4,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b90a8',font:{size:10}},grid:{color:'#f0f2f5'}},y:{ticks:{color:'#8b90a8',font:{size:10}},grid:{color:'#f0f2f5'}}}}});
+  }
+
+  // Platform pie
+  const platMap={};
+  v.forEach(x=>{const k=x.platform||'other';platMap[k]=(platMap[k]||0)+(x.views||0)});
+  const pk=Object.keys(platMap);
+  const ctx2=document.getElementById('chart-platform').getContext('2d');
+  chartCache.platform=new Chart(ctx2,{type:'doughnut',data:{labels:pk.map(p=>PLAT_NAMES[p]||p),datasets:[{data:Object.values(platMap),backgroundColor:pk.map(p=>PLAT_COLORS[p]||'#95a5a6'),borderWidth:3,borderColor:getComputedStyle(document.body).getPropertyValue('--card').trim()||'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a8',font:{size:11},padding:12}}}}});
+
+  // Engagement bar
+  if(h.length>0){
+    const labels=h.map(r=>r.day.slice(5));
+    const ctx3=document.getElementById('chart-engage').getContext('2d');
+    chartCache.engage=new Chart(ctx3,{type:'bar',data:{labels,datasets:[{label:'点赞',data:h.map(r=>r.likes||0),backgroundColor:'rgba(231,76,60,.6)'},{label:'评论',data:h.map(r=>r.comments||0),backgroundColor:'rgba(52,152,219,.6)'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a8',font:{size:10}}}},scales:{x:{ticks:{color:'#8b90a8',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#8b90a8',font:{size:10}},grid:{color:'#f0f2f5'}}}}});
+  }
+
+  // Top 10
+  const top10=v.slice(0,10).reverse();
+  const ctx4=document.getElementById('chart-top10').getContext('2d');
+  chartCache.top10=new Chart(ctx4,{type:'bar',indexAxis:'y',data:{labels:top10.map(x=>(x.title||'').slice(0,30)),datasets:[{label:'播放量',data:top10.map(x=>x.views||0),backgroundColor:top10.map(x=>PLAT_COLORS[x.platform]||'#95a5a6')}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b90a8',font:{size:10}},grid:{color:'#f0f2f5'}},y:{ticks:{color:'#8b90a8',font:{size:9}}}}}});
+}
+
+// ===== Video List =====
+let vSortField='views',vSortDir='desc';
+function sortVideos(field){
+  if(vSortField===field) vSortDir=vSortDir==='desc'?'asc':'desc';
+  else{vSortField=field;vSortDir='desc'}
+  document.getElementById('vf-sort').value=field+'_'+vSortDir;
+  renderVideos();
+}
+
+function renderVideos(){
+  const v=getAllVideos();
+  const plat=document.getElementById('vf-platform')?.value||'all';
+  const search=(document.getElementById('vf-search')?.value||'').toLowerCase();
+  const sv=document.getElementById('vf-sort')?.value||'views_desc';
+
+  let rows=v;
+  if(plat!=='all') rows=rows.filter(r=>r.platform===plat);
+  if(search) rows=rows.filter(r=>(r.title||'').toLowerCase().includes(search)||(r.channel||'').toLowerCase().includes(search));
+  const [sf,sd]=sv.split('_');
+  rows.sort((a,b)=>{
+    const va=sf==='date'?(a.published_at||''):(a[sf]||0);
+    const vb=sf==='date'?(b.published_at||''):(b[sf]||0);
+    return sd==='desc'?(va>vb?-1:1):(va<vb?-1:1);
+  });
+
+  document.getElementById('video-count-text').textContent=rows.length;
+
+  const tbody=document.getElementById('video-tbody');
+  if(rows.length===0){
+    tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3)">暂无匹配的视频</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML=rows.map(r=>{
+    const hasHistory = !!DATA.video_history[r.id];
+    return `<tr>
+      <td>
+        <div class="video-cell">
+          ${r.thumbnail?`<img class="video-thumb" src="${r.thumbnail}" loading="lazy" onerror="this.style.display='none'">`:'<div class="video-thumb"></div>'}
+          <div class="video-info">
+            <div class="title"><a href="${r.url}" target="_blank" rel="noopener">${r.title||r.url.slice(0,50)}</a></div>
+            <div class="meta">${r.published_at||'—'}</div>
+          </div>
+        </div>
+      </td>
+      <td>${badge(r.platform)}${r.isLocal?'<span class="new-video-badge">🆕 本地</span>':''}</td>
+      <td style="font-weight:500;font-size:13px">${r.channel||'—'}</td>
+      <td class="num">${fmt(r.views)}</td>
+      <td class="num">${fmt(r.likes)}</td>
+      <td class="num">${fmt(r.comments)}</td>
+      <td class="num">${fmt(r.shares)}</td>
+      <td class="num">${fmt(r.saves)}</td>
+      <td>${hasHistory?`<button class="btn btn-ghost btn-sm" onclick="showHistory('${r.id}','${(r.title||r.url).replace(/'/g,"\\'").slice(0,40)}')">📈</button>`:'<span style="font-size:11px;color:var(--text3)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== Analytics =====
+function renderAnalytics(){
+  const v=getAllVideos();
+  const plat=document.getElementById('an-platform')?.value||'all';
+  let rows=plat==='all'?v:v.filter(r=>r.platform===plat);
+
+  const totals=rows.reduce((a,x)=>({views:a.views+(x.views||0),likes:a.likes+(x.likes||0),comments:a.comments+(x.comments||0),shares:a.shares+(x.shares||0),saves:a.saves+(x.saves||0)}),{views:0,likes:0,comments:0,shares:0,saves:0});
+  const eng=totals.views>0?((totals.likes+totals.comments)/totals.views*100).toFixed(2):'0.00';
+
+  document.getElementById('an-stats').innerHTML=`
+    <div class="stat-card"><div class="icon">👁️</div><div class="label">播放量</div><div class="value">${fmt(totals.views)}</div></div>
+    <div class="stat-card"><div class="icon">❤️</div><div class="label">点赞</div><div class="value">${fmt(totals.likes)}</div></div>
+    <div class="stat-card"><div class="icon">💬</div><div class="label">评论</div><div class="value">${fmt(totals.comments)}</div></div>
+    <div class="stat-card"><div class="icon">📊</div><div class="label">互动率</div><div class="value">${eng}%</div></div>
+    <div class="stat-card"><div class="icon">🎬</div><div class="label">视频数</div><div class="value">${rows.length}</div></div>
+  `;
+
+  // Platform comparison
+  const ps={};
+  rows.forEach(r=>{
+    const p=r.platform||'other';
+    if(!ps[p]) ps[p]={views:0,likes:0,comments:0,count:0};
+    ps[p].views+=r.views||0;ps[p].likes+=r.likes||0;ps[p].comments+=r.comments||0;ps[p].count++;
+  });
+  const pk=Object.keys(ps);
+  const ctx1=document.getElementById('an-chart-platform').getContext('2d');
+  chartCache.anPlat=new Chart(ctx1,{type:'bar',data:{labels:pk.map(p=>PLAT_NAMES[p]||p),datasets:[{label:'播放量',data:pk.map(k=>ps[k].views),backgroundColor:pk.map(k=>PLAT_COLORS[k]||'#95a5a6')}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b90a8',font:{size:10}}},y:{ticks:{color:'#8b90a8',font:{size:10}},grid:{color:'#f0f2f5'}}}}});
+
+  const ctx2=document.getElementById('an-chart-engage').getContext('2d');
+  const erates=pk.map(k=>ps[k].views>0?((ps[k].likes+ps[k].comments)/ps[k].views*100).toFixed(2):0);
+  chartCache.anEng=new Chart(ctx2,{type:'bar',data:{labels:pk.map(p=>PLAT_NAMES[p]||p),datasets:[{label:'互动率%',data:erates,backgroundColor:pk.map(k=>(PLAT_COLORS[k]||'#95a5a6')+'99')}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b90a8',font:{size:10}}},y:{ticks:{color:'#8b90a8',font:{size:10}},grid:{color:'#f0f2f5'}}}}});
+
+  // Channel rank
+  const ch={};
+  rows.forEach(r=>{const c=r.channel||'未知';if(!ch[c])ch[c]={views:0,count:0,platform:r.platform};ch[c].views+=r.views||0;ch[c].count++});
+  const ranked=Object.entries(ch).sort((a,b)=>b[1].views-a[1].views).slice(0,15);
+  const mv=ranked[0]?.[1]?.views||1;
+  document.getElementById('an-rank').innerHTML=ranked.map(([name,d],i)=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border2)">
+      <span style="width:24px;text-align:center;font-weight:700;color:${i<3?'#f59e0b':'var(--text3)'}">${i+1}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:500;font-size:13px">${name} ${badge(d.platform)}</div>
+        <div style="height:5px;background:var(--border2);border-radius:3px;margin-top:6px">
+          <div style="height:5px;width:${Math.round(d.views/mv*100)}%;background:${PLAT_COLORS[d.platform]};border-radius:3px"></div>
+        </div>
+      </div>
+      <div style="text-align:right;min-width:70px">
+        <div style="font-weight:700;font-size:14px">${fmt(d.views)}</div>
+        <div style="font-size:11px;color:var(--text3)">${d.count} 条</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== Growth =====
+let currentTimeRange = 'all';
+let customStart = '', customEnd = '';
+
+function setGrowthTimeRange(range) {
+  currentTimeRange = range;
+  document.querySelectorAll('#gr-time-range .time-range-btn').forEach(b => {
+    b.classList.remove('active');
+    if ((typeof range === 'number' && b.textContent.includes(range.toString())) ||
+        (range === 'all' && b.textContent === '\u5168\u90e8')) {
+      b.classList.add('active');
+    }
+  });
+  const customInputs = document.getElementById('gr-custom-inputs');
+  if (range === 'custom') {
+    customInputs.classList.add('show');
+    document.getElementById('gr-custom-btn').classList.add('active');
+  } else {
+    customInputs.classList.remove('show');
+    document.getElementById('gr-custom-btn').classList.remove('active');
+  }
+  destroyCharts();
+  renderGrowth();
+}
+
+function toggleCustomRange() {
+  setGrowthTimeRange('custom');
+  if (!customStart) {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    customStart = d.toISOString().slice(0,10);
+    customEnd = today;
+  }
+  document.getElementById('gr-start').value = customStart;
+  document.getElementById('gr-end').value = customEnd;
+}
+
+function applyCustomRange() {
+  customStart = document.getElementById('gr-start').value;
+  customEnd = document.getElementById('gr-end').value;
+  if (customStart && customEnd) {
+    setGrowthTimeRange('custom');
+  }
+}
+
+function getDateRange() {
+  if (currentTimeRange === 'all') return { start: '', end: '' };
+  if (currentTimeRange === 'custom') return { start: customStart, end: customEnd };
+  const d = new Date();
+  const end = today;
+  d.setDate(d.getDate() - currentTimeRange);
+  return { start: d.toISOString().slice(0,10), end: end };
+}
+
+function filterHistoryByRange(history) {
+  const range = getDateRange();
+  if (!range.start) return history;
+  return history.filter(h => h.day >= range.start && h.day <= range.end);
+}
+
+function filterVideoHistoryByRange(history) {
+  const range = getDateRange();
+  if (!range.start) return history;
+  return history.filter(h => {
+    const d = (h.snapshot_at || '').slice(0,10);
+    return d >= range.start && d <= range.end;
+  });
+}
+
+function calcVideoGrowth(vid) {
+  const allHistory = DATA.video_history[vid] || [];
+  const hist = filterVideoHistoryByRange(allHistory);
+  if (hist.length < 2) return null;
+  const first = hist[0], last = hist[hist.length - 1];
+  return {
+    views: (last.views||0) - (first.views||0),
+    likes: (last.likes||0) - (first.likes||0),
+    comments: (last.comments||0) - (first.comments||0),
+    shares: (last.shares||0) - (first.shares||0),
+    saves: (last.saves||0) - (first.saves||0),
+    current_views: last.views || 0,
+    current_likes: last.likes || 0,
+    current_comments: last.comments || 0,
+    records: hist.length
+  };
+}
+
+function calcOverallGrowth() {
+  const hist = filterHistoryByRange(DATA.history);
+  if (hist.length === 0) return null;
+  const first = hist[0], last = hist[hist.length - 1];
+  return {
+    views: (last.views||0) - (first.views||0),
+    likes: (last.likes||0) - (first.likes||0),
+    comments: (last.comments||0) - (first.comments||0),
+    shares: (last.shares||0) - (first.shares||0),
+    saves: (last.saves||0) - (first.saves||0),
+    current_views: last.views || 0,
+    days: hist.length
+  };
+}
+
+function renderGrowth(){
+  // 按时间范围过滤历史数据
+  const h=filterHistoryByRange(DATA.history);
+
+  // 更新图表标题
+  const chartTitle=document.querySelector('#gr-chart').closest('.chart-wrap').querySelector('h3');
+  if(chartTitle) chartTitle.textContent='📈 总播放量变化 · '+getRangeLabel();
+
+  // 渲染图表
+  if(h.length>0){
+    const ctx=document.getElementById('gr-chart').getContext('2d');
+    chartCache.gr=new Chart(ctx,{type:'bar',data:{labels:h.map(r=>r.day.slice(5)),datasets:[{label:'总播放量',data:h.map(r=>r.views||0),backgroundColor:'rgba(79,110,247,.6)'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b90a8',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#8b90a8',font:{size:10}},grid:{color:'#f0f2f5'}}}}});
+  }else{
+    document.getElementById('gr-chart').getContext('2d').clearRect(0,0,600,300);
+  }
+
+  // 总体增长摘要
+  const og=calcOverallGrowth();
+  const summaryEl=document.getElementById('gr-summary');
+  if(og){
+    const dCls=d=>d>0?'up':d<0?'down':'';
+    const dStr=d=>(d>=0?'+':'')+fmt(d);
+    summaryEl.innerHTML=`
+      <div class="stat-card"><div class="label">播放增长</div><div class="value ${dCls(og.views)}">${dStr(og.views)}</div></div>
+      <div class="stat-card"><div class="label">点赞增长</div><div class="value ${dCls(og.likes)}">${dStr(og.likes)}</div></div>
+      <div class="stat-card"><div class="label">评论增长</div><div class="value ${dCls(og.comments)}">${dStr(og.comments)}</div></div>
+      <div class="stat-card"><div class="label">转发增长</div><div class="value ${dCls(og.shares)}">${dStr(og.shares)}</div></div>
+      <div class="stat-card"><div class="label">总播放</div><div class="value" style="color:var(--text)">${fmt(og.current_views)}</div></div>
+      <div class="stat-card"><div class="label">数据天数</div><div class="value" style="color:var(--text)">${og.days}</div></div>`;
+  }else{
+    summaryEl.innerHTML='<div style="padding:16px;color:var(--text3);text-align:center">该时间范围内暂无总体数据</div>';
+  }
+
+  // 按播放增长降序排列视频卡片
+  const vc=DATA.videos.map(v=>{
+    const g=calcVideoGrowth(v.id);
+    const hist=DATA.video_history[v.id]||[];
+    if(g){
+      return {v, g, html: `<div class="growth-card">
+      <div class="g-title" title="${v.title||''}">${v.title||v.url.slice(0,60)}</div>
+      <div class="g-meta">${badge(v.platform)} ${v.channel||''} · ${g.records} 条记录</div>
+      <div class="g-stats">
+        <div><div style="font-size:10px;color:var(--text3)">播放增长</div><div class="g-val ${g.views>0?'up':g.views<0?'down':''}">${g.views>=0?'+':''}${fmt(g.views)}</div></div>
+        <div><div style="font-size:10px;color:var(--text3)">点赞增长</div><div class="g-val ${g.likes>0?'up':g.likes<0?'down':''}">${g.likes>=0?'+':''}${fmt(g.likes)}</div></div>
+        <div><div style="font-size:10px;color:var(--text3)">当前播放</div><div class="g-val" style="color:var(--text)">${fmt(g.current_views)}</div></div>
+      </div>
+      <div style="margin-top:10px;text-align:right">
+        <button class="btn btn-ghost btn-sm" onclick="showHistory('${v.id}','${(v.title||v.url).replace(/'/g,"\\'").slice(0,40)}')">查看详情 →</button>
+      </div>
+    </div>`};
+    }else{
+      // 无增长数据：可能没有历史记录，或时间范围内数据不足2条
+      const inRange=filterVideoHistoryByRange(hist);
+      const reason=hist.length===0?'暂无历史数据':inRange.length<2?'该时间范围内数据不足':'等待数据采集';
+      return {v, g:null, html: `<div class="growth-card no-data">
+      <div class="g-title" title="${v.title||''}">${v.title||v.url.slice(0,60)}</div>
+      <div class="g-meta">${badge(v.platform)} ${v.channel||''} · <span style="color:#f59e0b">暂无增长数据</span></div>
+      <div class="g-stats">
+        <div><div style="font-size:10px;color:var(--text3)">播放增长</div><div class="g-val delta-zero">—</div></div>
+        <div><div style="font-size:10px;color:var(--text3)">点赞增长</div><div class="g-val delta-zero">—</div></div>
+        <div><div style="font-size:10px;color:var(--text3)">当前播放</div><div class="g-val" style="color:var(--text)">${fmt(v.views||0)}</div></div>
+      </div>
+      <div class="g-hint">提示：${reason}</div>
+    </div>`};
+    }
+  }).sort((a,b)=>(b.g?b.g.views:-Infinity)-(a.g?a.g.views:-Infinity));
+
+  document.getElementById('growth-cards').innerHTML=vc.map(c=>c.html).join('');
+}
+
+// ===== History Modal =====
+function showHistory(vid,title){
+  const hist=DATA.video_history[vid];
+  document.getElementById('hist-title').textContent='📊 '+title;
+  closeModal('hist-modal'); // reset
+
+  if(!hist||hist.length===0){
+    document.getElementById('hist-stats').innerHTML='<div style="color:var(--text3);padding:20px;text-align:center">暂无历史数据</div>';
+    openModal('hist-modal');
+    return;
+  }
+
+  const first=hist[0],last=hist[hist.length-1];
+  const dV=(last.views||0)-(first.views||0);
+  const dL=(last.likes||0)-(first.likes||0);
+  const dC=(last.comments||0)-(first.comments||0);
+  const dS=(last.shares||0)-(first.shares||0);
+  const dSv=(last.saves||0)-(first.saves||0);
+  const deltaCls=d=>d>0?'up':d<0?'down':'';
+  const deltaStr=d=>(d>=0?'+':'')+fmt(d);
+
+  document.getElementById('hist-stats').innerHTML=`
+    <div class="stat-card"><div class="label">播放量</div><div class="value" style="font-size:18px">${fmt(last.views)}</div><div class="sub" style="color:${dV>=0?'#16a34a':'#dc2626'}">${deltaStr(dV)}</div></div>
+    <div class="stat-card"><div class="label">点赞</div><div class="value" style="font-size:18px">${fmt(last.likes)}</div><div class="sub" style="color:${dL>=0?'#16a34a':'#dc2626'}">${deltaStr(dL)}</div></div>
+    <div class="stat-card"><div class="label">评论</div><div class="value" style="font-size:18px">${fmt(last.comments)}</div><div class="sub" style="color:${dC>=0?'#16a34a':'#dc2626'}">${deltaStr(dC)}</div></div>
+    <div class="stat-card"><div class="label">转发</div><div class="value" style="font-size:18px">${fmt(last.shares)}</div><div class="sub">${deltaStr(dS)}</div></div>
+    <div class="stat-card"><div class="label">记录数</div><div class="value" style="font-size:18px">${hist.length}</div></div>
+  `;
+
+  const labels=hist.map(h=>(h.snapshot_at||'').slice(5,16));
+  const ctx=document.getElementById('hist-chart').getContext('2d');
+  chartCache.histDetail=new Chart(ctx,{type:'line',data:{labels,datasets:[
+    {label:'播放',data:hist.map(h=>h.views||0),borderColor:'#4f6ef7',backgroundColor:'rgba(79,110,247,.08)',fill:true,tension:.3,pointRadius:3},
+    {label:'点赞',data:hist.map(h=>h.likes||0),borderColor:'#e74c3c',tension:.3,pointRadius:2},
+    {label:'评论',data:hist.map(h=>h.comments||0),borderColor:'#f59e0b',tension:.3,pointRadius:2}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a8',font:{size:10},boxWidth:12}}},scales:{x:{ticks:{color:'#8b90a8',font:{size:9},maxTicksLimit:10},grid:{color:'#f0f2f5'}},y:{ticks:{color:'#8b90a8',font:{size:10}},grid:{color:'#f0f2f5'}}}}});
+
+  document.getElementById('hist-tbody').innerHTML=[...hist].reverse().slice(0,50).map(h=>`
+    <tr><td style="padding:6px 8px;color:var(--text3);white-space:nowrap;font-size:11px">${(h.snapshot_at||'').slice(0,16)}</td><td class="num" style="padding:6px 8px;text-align:right">${fmt(h.views)}</td><td class="num" style="padding:6px 8px;text-align:right">${fmt(h.likes)}</td><td class="num" style="padding:6px 8px;text-align:right">${fmt(h.comments)}</td><td class="num" style="padding:6px 8px;text-align:right">${fmt(h.shares)}</td><td class="num" style="padding:6px 8px;text-align:right">${fmt(h.saves)}</td></tr>
+  `).join('');
+
+  openModal('hist-modal');
+}
+
+function openModal(id){document.getElementById(id)?.classList.add('open')}
+function closeModal(id){document.getElementById(id)?.classList.remove('open')}
+document.querySelectorAll('.modal-overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')})});
+
+// ===== Init =====
+function init(){
+  initTheme();
+  document.getElementById('nav-today').textContent = new Date().toLocaleDateString('zh-CN');
+  document.getElementById('update-time').textContent = '数据: '+DATA.generated_at.slice(5,16);
+
+  // Set up sort select sync
+  document.getElementById('vf-sort').addEventListener('change',function(){
+    const [f,d]=this.value.split('_');
+    vSortField=f; vSortDir=d;
+    renderVideos();
+  });
+
+  // Show local video count
+  const localCount = loadLocalVideos().length;
+  if (localCount > 0) {
+    document.getElementById('update-time').textContent += ' · +' + localCount + ' 本地';
+  }
+
+  renderDashboard();
+}
+init();
+</script>
+</body>
+</html>
