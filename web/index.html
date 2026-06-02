@@ -1011,73 +1011,100 @@ function calcOverallGrowth() {
 }
 
 function renderGrowth(){
-  // 按时间范围过滤历史数据
-  const h=filterHistoryByRange(DATA.history);
-
-  // 更新图表标题
-  const chartTitle=document.querySelector('#gr-chart').closest('.chart-wrap').querySelector('h3');
-  if(chartTitle) chartTitle.textContent='📈 总播放量变化 · '+getRangeLabel();
-
-  // 渲染图表
-  if(h.length>0){
-    const ctx=document.getElementById('gr-chart').getContext('2d');
-    chartCache.gr=new Chart(ctx,{type:'bar',data:{labels:h.map(r=>r.day.slice(5)),datasets:[{label:'总播放量',data:h.map(r=>r.views||0),backgroundColor:'rgba(79,110,247,.6)'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b90a8',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#8b90a8',font:{size:10}},grid:{color:'#f0f2f5'}}}}});
-  }else{
-    document.getElementById('gr-chart').getContext('2d').clearRect(0,0,600,300);
-  }
-
-  // 总体增长摘要
-  const og=calcOverallGrowth();
-  const summaryEl=document.getElementById('gr-summary');
-  if(og){
-    const dCls=d=>d>0?'up':d<0?'down':'';
-    const dStr=d=>(d>=0?'+':'')+fmt(d);
-    summaryEl.innerHTML=`
-      <div class="stat-card"><div class="label">播放增长</div><div class="value ${dCls(og.views)}">${dStr(og.views)}</div></div>
-      <div class="stat-card"><div class="label">点赞增长</div><div class="value ${dCls(og.likes)}">${dStr(og.likes)}</div></div>
-      <div class="stat-card"><div class="label">评论增长</div><div class="value ${dCls(og.comments)}">${dStr(og.comments)}</div></div>
-      <div class="stat-card"><div class="label">转发增长</div><div class="value ${dCls(og.shares)}">${dStr(og.shares)}</div></div>
-      <div class="stat-card"><div class="label">总播放</div><div class="value" style="color:var(--text)">${fmt(og.current_views)}</div></div>
-      <div class="stat-card"><div class="label">数据天数</div><div class="value" style="color:var(--text)">${og.days}</div></div>`;
-  }else{
-    summaryEl.innerHTML='<div style="padding:16px;color:var(--text3);text-align:center">该时间范围内暂无总体数据</div>';
-  }
-
-  // 按播放增长降序排列视频卡片
-  const vc=DATA.videos.map(v=>{
-    const g=calcVideoGrowth(v.id);
-    const hist=DATA.video_history[v.id]||[];
-    if(g){
-      return {v, g, html: `<div class="growth-card">
-      <div class="g-title" title="${v.title||''}">${v.title||v.url.slice(0,60)}</div>
-      <div class="g-meta">${badge(v.platform)} ${v.channel||''} · ${g.records} 条记录</div>
-      <div class="g-stats">
-        <div><div style="font-size:10px;color:var(--text3)">播放增长</div><div class="g-val ${g.views>0?'up':g.views<0?'down':''}">${g.views>=0?'+':''}${fmt(g.views)}</div></div>
-        <div><div style="font-size:10px;color:var(--text3)">点赞增长</div><div class="g-val ${g.likes>0?'up':g.likes<0?'down':''}">${g.likes>=0?'+':''}${fmt(g.likes)}</div></div>
-        <div><div style="font-size:10px;color:var(--text3)">当前播放</div><div class="g-val" style="color:var(--text)">${fmt(g.current_views)}</div></div>
-      </div>
-      <div style="margin-top:10px;text-align:right">
-        <button class="btn btn-ghost btn-sm" onclick="showHistory('${v.id}','${(v.title||v.url).replace(/'/g,"\\'").slice(0,40)}')">查看详情 →</button>
-      </div>
-    </div>`};
-    }else{
-      // 无增长数据：可能没有历史记录，或时间范围内数据不足2条
-      const inRange=filterVideoHistoryByRange(hist);
-      const reason=hist.length===0?'暂无历史数据':inRange.length<2?'该时间范围内数据不足':'等待数据采集';
-      return {v, g:null, html: `<div class="growth-card no-data">
-      <div class="g-title" title="${v.title||''}">${v.title||v.url.slice(0,60)}</div>
-      <div class="g-meta">${badge(v.platform)} ${v.channel||''} · <span style="color:#f59e0b">暂无增长数据</span></div>
-      <div class="g-stats">
-        <div><div style="font-size:10px;color:var(--text3)">播放增长</div><div class="g-val delta-zero">—</div></div>
-        <div><div style="font-size:10px;color:var(--text3)">点赞增长</div><div class="g-val delta-zero">—</div></div>
-        <div><div style="font-size:10px;color:var(--text3)">当前播放</div><div class="g-val" style="color:var(--text)">${fmt(v.views||0)}</div></div>
-      </div>
-      <div class="g-hint">提示：${reason}</div>
-    </div>`};
+  try {
+    // 检查数据是否存在
+    if(!DATA||!DATA.history||!DATA.videos){
+      document.getElementById('growth-cards').innerHTML='<div style="padding:24px;color:var(--text3);text-align:center">⚠️ 数据加载中，请稍后刷新...</div>';
+      return;
     }
-  }).sort((a,b)=>(b.g?b.g.views:-Infinity)-(a.g?a.g.views:-Infinity));
 
-  document.getElementById('growth-cards').innerHTML=vc.map(c=>c.html).join('');
+    // 按时间范围过滤历史数据
+    const h=filterHistoryByRange(DATA.history);
+
+    // 更新图表标题
+    const chartWrap=document.querySelector('#gr-chart');
+    if(chartWrap){
+      const wrap=chartWrap.closest('.chart-wrap');
+      if(wrap){
+        const title=wrap.querySelector('h3');
+        if(title) title.textContent='📈 总播放量变化 · '+getRangeLabel();
+      }
+    }
+
+    // 渲染图表
+    if(h&&h.length>0){
+      const ctx=document.getElementById('gr-chart');
+      if(ctx&&typeof Chart!=='undefined'){
+        chartCache.gr=new Chart(ctx.getContext('2d'),{type:'bar',data:{labels:h.map(r=>(r.day||'').slice(5)),datasets:[{label:'总播放量',data:h.map(r=>r.views||0),backgroundColor:'rgba(79,110,247,.6)'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b90a8',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#8b90a8',font:{size:10}},grid:{color:'#f0f2f5'}}}}});
+      }
+    }
+
+    // 总体增长摘要
+    const og=calcOverallGrowth();
+    const summaryEl=document.getElementById('gr-summary');
+    if(summaryEl){
+      if(og){
+        const dCls=d=>d>0?'up':d<0?'down':'';
+        const dStr=d=>(d>=0?'+':'')+fmt(d);
+        summaryEl.innerHTML=
+          '<div class="stat-card"><div class="label">播放增长</div><div class="value '+dCls(og.views)+'">'+dStr(og.views)+'</div></div>'+
+          '<div class="stat-card"><div class="label">点赞增长</div><div class="value '+dCls(og.likes)+'">'+dStr(og.likes)+'</div></div>'+
+          '<div class="stat-card"><div class="label">评论增长</div><div class="value '+dCls(og.comments)+'">'+dStr(og.comments)+'</div></div>'+
+          '<div class="stat-card"><div class="label">转发增长</div><div class="value '+dCls(og.shares)+'">'+dStr(og.shares)+'</div></div>'+
+          '<div class="stat-card"><div class="label">总播放</div><div class="value" style="color:var(--text)">'+fmt(og.current_views)+'</div></div>'+
+          '<div class="stat-card"><div class="label">数据天数</div><div class="value" style="color:var(--text)">'+og.days+'</div></div>';
+      }else{
+        summaryEl.innerHTML='<div style="padding:16px;color:var(--text3);text-align:center">该时间范围内暂无总体数据</div>';
+      }
+    }
+
+    // 按播放增长降序排列视频卡片
+    const vc=DATA.videos.map(function(v){
+      try {
+        const g=calcVideoGrowth(v.id);
+        const hist=DATA.video_history[v.id]||[];
+        if(g){
+          return {v:v, g:g, html:
+            '<div class="growth-card">'+
+            '<div class="g-title" title="'+(v.title||'')+'">'+(v.title||v.url||'').slice(0,60)+'</div>'+
+            '<div class="g-meta">'+badge(v.platform)+' '+(v.channel||'')+' · '+g.records+' 条记录</div>'+
+            '<div class="g-stats">'+
+              '<div><div style="font-size:10px;color:var(--text3)">播放增长</div><div class="g-val '+(g.views>0?'up':g.views<0?'down':'')+'">'+(g.views>=0?'+':'')+fmt(g.views)+'</div></div>'+
+              '<div><div style="font-size:10px;color:var(--text3)">点赞增长</div><div class="g-val '+(g.likes>0?'up':g.likes<0?'down':'')+'">'+(g.likes>=0?'+':'')+fmt(g.likes)+'</div></div>'+
+              '<div><div style="font-size:10px;color:var(--text3)">当前播放</div><div class="g-val" style="color:var(--text)">'+fmt(g.current_views)+'</div></div>'+
+            '</div>'+
+            '<div style="margin-top:10px;text-align:right"><button class="btn btn-ghost btn-sm" onclick="showHistory(\''+v.id+'\',\''+(v.title||v.url||'').replace(/'/g,\"\\\\'\").slice(0,40)+'\')">查看详情 →</button></div>'+
+            '</div>'};
+        }else{
+          const inRange=filterVideoHistoryByRange(hist);
+          const reason=hist.length===0?'暂无历史数据':inRange.length<2?'该时间范围内数据不足':'等待数据采集';
+          return {v:v, g:null, html:
+            '<div class="growth-card no-data">'+
+            '<div class="g-title" title="'+(v.title||'')+'">'+(v.title||v.url||'').slice(0,60)+'</div>'+
+            '<div class="g-meta">'+badge(v.platform)+' '+(v.channel||'')+' · <span style="color:#f59e0b">暂无增长数据</span></div>'+
+            '<div class="g-stats">'+
+              '<div><div style="font-size:10px;color:var(--text3)">播放增长</div><div class="g-val delta-zero">—</div></div>'+
+              '<div><div style="font-size:10px;color:var(--text3)">点赞增长</div><div class="g-val delta-zero">—</div></div>'+
+              '<div><div style="font-size:10px;color:var(--text3)">当前播放</div><div class="g-val" style="color:var(--text)">'+fmt(v.views||0)+'</div></div>'+
+            '</div>'+
+            '<div class="g-hint">提示：'+reason+'</div>'+
+            '</div>'};
+        }
+      } catch(e){
+        return {v:v, g:null, html:
+          '<div class="growth-card no-data">'+
+          '<div class="g-title">'+(v.title||v.url||'').slice(0,60)+'</div>'+
+          '<div class="g-meta">'+badge(v.platform)+' · <span style="color:#ef4444">计算错误</span></div>'+
+          '<div class="g-hint">'+e.message+'</div>'+
+          '</div>'};
+      }
+    }).sort(function(a,b){return (b.g?b.g.views:-Infinity)-(a.g?a.g.views:-Infinity)});
+
+    document.getElementById('growth-cards').innerHTML=vc.map(function(c){return c.html}).join('');
+  } catch(e) {
+    document.getElementById('growth-cards').innerHTML='<div style="padding:24px;color:#ef4444;text-align:center">⚠️ 渲染出错: '+e.message+'</div>';
+    document.getElementById('gr-summary').innerHTML='<div style="padding:16px;color:#ef4444;text-align:center">渲染失败，请刷新重试</div>';
+  }
 }
 
 // ===== History Modal =====
